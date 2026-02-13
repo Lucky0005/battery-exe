@@ -4,15 +4,17 @@ import re
 import tkinter as tk
 from tkinter import messagebox
 
-REPORT_PATH = r"C:\battery_report.html"
+REPORT_PATH = os.path.join(os.environ["USERPROFILE"], "battery_report.html")
 
 def generate_report():
     try:
         subprocess.run(
             ["powercfg", "/batteryreport", "/output", REPORT_PATH],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             check=True
         )
-    except subprocess.CalledProcessError:
+    except:
         messagebox.showerror("Chyba", "Spusť program jako administrátor.")
         return False
     return True
@@ -24,18 +26,27 @@ def parse_report():
     with open(REPORT_PATH, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
 
-    # Najde první dvě hodnoty mWh v části Installed batteries
-    values = re.findall(r"(\d{3,6})\s*mWh", content)
+    # Najdi sekci Installed batteries
+    section = re.search(r"Installed batteries.*?</table>", content, re.DOTALL)
 
-    if len(values) >= 2:
-        design_cap = int(values[0])
-        full_cap = int(values[1])
-        return design_cap, full_cap
+    if not section:
+        return None, None
+
+    numbers = re.findall(r"(\d{4,6})\s*mWh", section.group())
+
+    if len(numbers) >= 2:
+        design = int(numbers[0])
+        full = int(numbers[1])
+        return design, full
 
     return None, None
 
 def show_info():
+    btn.config(state="disabled")
+    root.update()
+
     if not generate_report():
+        btn.config(state="normal")
         return
 
     design, full = parse_report()
@@ -50,9 +61,11 @@ def show_info():
     else:
         messagebox.showerror("Chyba", "Nepodařilo se načíst data z reportu.")
 
+    btn.config(state="normal")
+
 root = tk.Tk()
 root.title("Battery Info")
-root.geometry("350x200")
+root.geometry("360x200")
 
 btn = tk.Button(root, text="Zobrazit informace o baterii", command=show_info)
 btn.pack(pady=20)
