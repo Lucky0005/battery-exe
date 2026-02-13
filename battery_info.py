@@ -8,9 +8,12 @@ REPORT_PATH = r"C:\battery_report.html"
 
 def generate_report():
     try:
-        subprocess.run(["powercfg", "/batteryreport", "/output", REPORT_PATH], check=True)
+        subprocess.run(
+            ["powercfg", "/batteryreport", "/output", REPORT_PATH],
+            check=True
+        )
     except subprocess.CalledProcessError:
-        messagebox.showerror("Chyba", "Nepodařilo se vygenerovat battery report.\nSpusť program jako administrátor.")
+        messagebox.showerror("Chyba", "Spusť program jako administrátor.")
         return False
     return True
 
@@ -21,12 +24,12 @@ def parse_report():
     with open(REPORT_PATH, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
 
-    design = re.search(r"Design Capacity.*?(\d+,\d+|\d+)\s*mWh", content)
-    full = re.search(r"Full Charge Capacity.*?(\d+,\d+|\d+)\s*mWh", content)
+    # Najde první dvě hodnoty mWh v části Installed batteries
+    values = re.findall(r"(\d{3,6})\s*mWh", content)
 
-    if design and full:
-        design_cap = int(design.group(1).replace(",", ""))
-        full_cap = int(full.group(1).replace(",", ""))
+    if len(values) >= 2:
+        design_cap = int(values[0])
+        full_cap = int(values[1])
         return design_cap, full_cap
 
     return None, None
@@ -47,7 +50,6 @@ def show_info():
     else:
         messagebox.showerror("Chyba", "Nepodařilo se načíst data z reportu.")
 
-# GUI
 root = tk.Tk()
 root.title("Battery Info")
 root.geometry("350x200")
